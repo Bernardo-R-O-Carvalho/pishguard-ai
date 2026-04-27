@@ -1,4 +1,3 @@
-# pishguard-ai
 # 🛡️ PhishGuard AI
 
 A lightweight, explainable phishing email detector built with NLP and Machine Learning.
@@ -36,20 +35,7 @@ The project started as an exploratory analysis on [Zerve](https://zerve.ai), an 
 
 ---
 
-## Results
-
-| Metric | Score |
-|--------|-------|
-| Accuracy | 100% (on synthetic dataset) |
-| Precision | 1.00 |
-| Recall | 1.00 |
-| F1 | 1.00 |
-
-**Important caveat:** these numbers look great because the dataset is synthetic and small (300 samples). See limitations below.
-
----
-
-## Limitations — and how we'd fix them
+## Limitations — and how I'll fix them
 
 **1. Synthetic dataset**
 The training data was generated, not collected from real phishing campaigns. This means the model learned clean, obvious patterns — not the subtle social engineering tactics used in real attacks.
