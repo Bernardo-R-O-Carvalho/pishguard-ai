@@ -1,39 +1,58 @@
-import subprocess
-subprocess.run(["pip", "install", "scikit-learn", "gradio"], check=True)
-
 import gradio as gr
-import random
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+import joblib
+from url_features import analyze_email_urls
 
-# Treinar modelo
-random.seed(42)
-rows = []
-for _ in range(300):
-    if random.random() > 0.5:
-        rows.append(("urgent verify account click http immediately free claim suspended password winner", 1))
-    else:
-        rows.append(("team meeting report attached invoice project update order shipped", 0))
+model = joblib.load("model.pkl")
+tfidf = joblib.load("tfidf.pkl")
 
-texts, labels = zip(*rows)
-tfidf = TfidfVectorizer(max_features=200, stop_words='english')
-model = LogisticRegression(random_state=42)
-model.fit(tfidf.fit_transform(texts), labels)
+RISK_WORDS = ["verify", "account", "click", "claim", "free", "urgent",
+              "suspended", "password", "winner", "confirm", "update"]
 
 def predict(subject, body):
     text = subject + " " + body
+
     pred = model.predict(tfidf.transform([text]))[0]
-    conf = model.predict_proba(tfidf.transform([text]))[0][pred]
-    flags = [w for w in ["verify","account","click","claim","free","urgent","http","suspended","password"] if w in text.lower()]
-    verdict = "🚨 PHISHING" if pred else "✅ LEGITIMATE"
-    return f"{verdict}\nConfidence: {conf*100:.1f}%\nRed Flags: {', '.join(flags[:3]) if flags else 'none'}"
+    prob = model.predict_proba(tfidf.transform([text]))[0]
+    confidence = prob[pred] * 100
+
+    risk_score = int(confidence if pred == 1 else 100 - confidence)
+
+    flags = [w for w in RISK_WORDS if w in text.lower()]
+
+    url_results = analyze_email_urls(text)
+    url_flags = []
+    for r in url_results:
+        for f in r["flags"]:
+            if f != "domínio confiável":
+                url_flags.append(f"{r['domain']}: {f}")
+
+    if pred == 1:
+        if risk_score >= 90:
+            verdict = "🚨 PHISHING — Alto risco"
+        else:
+            verdict = "⚠️ SUSPEITO — Risco moderado"
+    else:
+        verdict = "✅ LEGÍTIMO"
+
+    result = f"{verdict}\n"
+    result += f"Score de risco: {risk_score}/100\n"
+    result += f"\nPalavras suspeitas: {', '.join(flags) if flags else 'nenhuma'}\n"
+    result += f"URLs suspeitas: {', '.join(url_flags) if url_flags else 'nenhuma'}\n"
+
+    if url_results:
+        result += f"\nURLs encontradas: {len(url_results)}\n"
+        for r in url_results:
+            status = "✅" if "domínio confiável" in r["flags"] else "⚠️"
+            result += f"  {status} {r['domain']}\n"
+
+    return result
 
 with gr.Blocks() as demo:
     gr.Markdown("# 🛡️ PhishGuard AI\nPaste an email below to check if it's phishing.")
     subject = gr.Textbox(label="Subject")
     body = gr.Textbox(label="Body", lines=4)
     btn = gr.Button("Analyze", variant="primary")
-    output = gr.Textbox(label="Result")
+    output = gr.Textbox(label="Result", lines=12)
     btn.click(predict, inputs=[subject, body], outputs=output)
 
 demo.launch(server_name="0.0.0.0", server_port=8080)
