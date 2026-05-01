@@ -9,7 +9,18 @@ WHITELIST = {
 }
 
 CHAR_SUBSTITUTIONS = {
-    '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '@': 'a'
+    '0': 'o',
+    '1': 'l',
+    '3': 'e',
+    '4': 'a',
+    '5': 's',
+    '6': 'g',
+    '8': 'b',
+    '@': 'a',
+    'rn': 'm',
+    'vv': 'w',
+    'cl': 'd',
+    'ii': 'n',
 }
 
 def normalize_domain(domain):
@@ -28,41 +39,51 @@ def analyze_url(url):
         flags = []
 
         if parsed.scheme == "http":
-            flags.append("sem HTTPS")
+            flags.append("no HTTPS")
 
         if domain in SHORTENERS:
-            flags.append("link encurtado")
+            flags.append("shortened link")
 
         if any(domain.endswith("." + w) or domain == w for w in WHITELIST):
-            flags.append("domínio confiável")
+            flags.append("trusted domain")
             return {"url": url, "domain": domain, "flags": flags}
 
+        normalized_check = normalize_domain(domain)
+        for w in WHITELIST:
+            if normalized_check == w and domain != w:
+                flags.append(f"impersonating {w}")
+                return {"url": url, "domain": domain, "flags": flags}
+
         if re.search(r'\d{4,}', domain):
-            flags.append("números suspeitos no domínio")
+            flags.append("suspicious numbers in domain")
 
         if domain.count(".") > 3:
-            flags.append("muitos subdomínios")
+            flags.append("too many subdomains")
 
         if re.search(r'(verify|secure|login|account|update|confirm)', domain):
-            flags.append("palavra suspeita no domínio")
+            flags.append("suspicious word in domain")
 
         normalized = normalize_domain(domain)
+        normalized_no_tld = normalized.split(".")[0]
         for trusted in WHITELIST:
             trusted_name = trusted.split(".")[0]
-            if trusted_name in normalized and domain != trusted:
-                flags.append(f"imitando {trusted}")
+            if trusted_name == normalized_no_tld and domain != trusted:
+                flags.append(f"impersonating {trusted}")
+                break
+            elif trusted_name in normalized and domain != trusted:
+                flags.append(f"impersonating {trusted}")
                 break
 
         subdomains = domain.split(".")
         for trusted in WHITELIST:
             trusted_name = trusted.split(".")[0]
             if trusted_name in subdomains[:-2]:
-                if f"imitando {trusted}" not in flags:
-                    flags.append(f"imitando {trusted}")
+                if f"impersonating {trusted}" not in flags:
+                    flags.append(f"impersonating {trusted}")
 
         return {"url": url, "domain": domain, "flags": flags}
     except:
-        return {"url": url, "domain": "", "flags": ["erro ao analisar"]}
+        return {"url": url, "domain": "", "flags": ["error analyzing URL"]}
 
 def analyze_email_urls(text):
     urls = extract_urls(text)
