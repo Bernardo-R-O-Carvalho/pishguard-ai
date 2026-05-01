@@ -2,7 +2,7 @@
 
 A lightweight, explainable phishing email detector built with NLP and Machine Learning.
 
-🚀 **[Live Demo on Hugging Face Spaces](https://huggingface.co/spaces/BernardoCarvalho/pishguard-ai)**
+🚀 **[Live Demo on Hugging Face Spaces - V3](https://huggingface.co/spaces/BernardoCarvalho/pishguard-ai)**
 
 ---
 
